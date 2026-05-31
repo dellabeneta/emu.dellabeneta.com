@@ -32,6 +32,20 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL")
 check "Site responde 200" '[ "$STATUS" = "200" ]'
 echo ""
 
+# ── Security headers ────────────────────────────
+echo "[ Security Headers ]"
+HEADERS=$(curl -s -I "$BASE_URL")
+
+check "X-Frame-Options: SAMEORIGIN" \
+  'echo "$HEADERS" | grep -qi "x-frame-options: SAMEORIGIN"'
+
+check "X-Content-Type-Options: nosniff" \
+  'echo "$HEADERS" | grep -qi "x-content-type-options: nosniff"'
+
+check "Referrer-Policy: strict-origin-when-cross-origin" \
+  'echo "$HEADERS" | grep -qi "referrer-policy: strict-origin-when-cross-origin"'
+echo ""
+
 # ── Hotlink protection ──────────────────────────
 echo "[ Hotlink Protection ]"
 ROM_URL="$BASE_URL/roms/snes/aladdin.sfc"
