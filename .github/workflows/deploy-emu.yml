@@ -54,11 +54,11 @@ jobs:
 
       - name: Sync files to S3
         run: |
-          aws s3 cp index.html  s3://emu.dellabeneta.com-220313512128-sa-east-1-an/index.html
-          aws s3 cp data.js     s3://emu.dellabeneta.com-220313512128-sa-east-1-an/data.js
-          aws s3 cp script.js   s3://emu.dellabeneta.com-220313512128-sa-east-1-an/script.js
-          aws s3 cp style.css   s3://emu.dellabeneta.com-220313512128-sa-east-1-an/style.css
-          aws s3 cp favicon.ico s3://emu.dellabeneta.com-220313512128-sa-east-1-an/favicon.ico
+          aws s3 cp index.html  s3://emu.dellabeneta.com/index.html
+          aws s3 cp data.js     s3://emu.dellabeneta.com/data.js
+          aws s3 cp script.js   s3://emu.dellabeneta.com/script.js
+          aws s3 cp style.css   s3://emu.dellabeneta.com/style.css
+          aws s3 cp favicon.ico s3://emu.dellabeneta.com/favicon.ico
 
       - name: Purge Cloudflare Cache
         uses: jakejarvis/cloudflare-purge-action@v0.3.0

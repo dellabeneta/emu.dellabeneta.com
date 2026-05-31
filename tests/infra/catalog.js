@@ -6,7 +6,7 @@ const vm = require('vm');
 const { execSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '../..');
-const BUCKET = 'emu.dellabeneta.com-220313512128-sa-east-1-an';
+const BUCKET = 'emu.dellabeneta.com'; 
 
 const folderMap = {
   'Nintendo': 'nes',
