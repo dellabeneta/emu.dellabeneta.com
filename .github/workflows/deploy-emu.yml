@@ -54,18 +54,18 @@ jobs:
 
       - name: Sync files to S3
         run: |
-          aws s3 cp index.html  s3://emu.dellabeneta.io/index.html
-          aws s3 cp data.js     s3://emu.dellabeneta.io/data.js
-          aws s3 cp script.js   s3://emu.dellabeneta.io/script.js
-          aws s3 cp style.css   s3://emu.dellabeneta.io/style.css
-          aws s3 cp favicon.ico s3://emu.dellabeneta.io/favicon.ico
+          aws s3 cp index.html  s3://emu.dellabeneta.com/index.html
+          aws s3 cp data.js     s3://emu.dellabeneta.com/data.js
+          aws s3 cp script.js   s3://emu.dellabeneta.com/script.js
+          aws s3 cp style.css   s3://emu.dellabeneta.com/style.css
+          aws s3 cp favicon.ico s3://emu.dellabeneta.com/favicon.ico
 
       - name: Purge Cloudflare Cache
         uses: jakejarvis/cloudflare-purge-action@v0.3.0
         env:
           CLOUDFLARE_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
-          PURGE_URLS: '["https://emu.dellabeneta.io/index.html","https://emu.dellabeneta.io/data.js","https://emu.dellabeneta.io/script.js","https://emu.dellabeneta.io/style.css","https://emu.dellabeneta.io/favicon.ico"]'
+          PURGE_URLS: '["https://emu.dellabeneta.com/index.html","https://emu.dellabeneta.com/data.js","https://emu.dellabeneta.com/script.js","https://emu.dellabeneta.com/style.css","https://emu.dellabeneta.com/favicon.ico"]'
 
   smoke:
     name: Smoke Tests

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASE_URL="https://emu.dellabeneta.io"
+BASE_URL="https://emu.dellabeneta.com"
 PASS=0
 FAIL=0
 
@@ -56,7 +56,7 @@ check "Bloqueia ROM com Referer externo (403)" \
   '[ "$STATUS_HOTLINK" = "403" ]'
 
 STATUS_OWN=$(curl -s -o /dev/null -w "%{http_code}" \
-  -H "Referer: https://emu.dellabeneta.io" "$ROM_URL")
+  -H "Referer: https://emu.dellabeneta.com" "$ROM_URL")
 check "Permite ROM com Referer próprio (200)" \
   '[ "$STATUS_OWN" = "200" ]'
 echo ""

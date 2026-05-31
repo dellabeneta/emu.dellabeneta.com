@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BUCKET="s3://emu.dellabeneta.io"
+BUCKET="s3://emu.dellabeneta.com"
 
 echo ""
 echo "═══════════════════════════════════════════"

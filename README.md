@@ -9,8 +9,8 @@
 
 > **Emulação retro no browser. Sem instalação. Sem cadastro. Só jogar.**
 
-[![Site](https://img.shields.io/badge/SITE-emu.dellabeneta.io-2d6e4e?style=for-the-badge&logo=googlechrome&logoColor=white)](https://emu.dellabeneta.io)
-[![Deploy](https://img.shields.io/badge/DEPLOY-GitHub_Actions-cc8800?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/dellabeneta/emu.dellabeneta.io/actions)
+[![Site](https://img.shields.io/badge/SITE-emu.dellabeneta.com-2d6e4e?style=for-the-badge&logo=googlechrome&logoColor=white)](https://emu.dellabeneta.com)
+[![Deploy](https://img.shields.io/badge/DEPLOY-GitHub_Actions-cc8800?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/dellabeneta/emu.dellabeneta.com/actions)
 [![CDN](https://img.shields.io/badge/CDN-Cloudflare-b05a10?style=for-the-badge&logo=cloudflare&logoColor=white)](https://cloudflare.com)
 [![Host](https://img.shields.io/badge/HOST-Amazon_S3-aa6600?style=for-the-badge&logo=amazons3&logoColor=white)](https://aws.amazon.com/s3/)
 
@@ -74,7 +74,7 @@ Segurança           → Bucket policy + WAF + SRI + Security Headers
 O diagrama abaixo mostra o fluxo completo de uma requisição — do usuário até os dados.
 
 ```
-  Usuário abre emu.dellabeneta.io
+  Usuário abre emu.dellabeneta.com
               │
               ▼
   ┌───────────────────────────────────────────────────┐
@@ -150,7 +150,7 @@ node tests/unit/platforms.js
 ### Estrutura do projeto
 
 ```
-emu.dellabeneta.io/
+emu.dellabeneta.com/
 ├── index.html              # estrutura da interface
 ├── style.css               # tema CRT cyberpunk (verde #00ff88 + âmbar #ffaa00)
 ├── script.js               # catálogo PLATFORMS[], lógica, integração EmulatorJS
@@ -202,7 +202,7 @@ Requer AWS CLI configurado localmente com as credenciais corretas.
 | Camada | Implementação |
 |---|---|
 | Acesso ao S3 | Bucket policy restrito aos IPs da Cloudflare — requisições diretas ao endpoint S3 retornam **403 Forbidden** |
-| Hotlink protection | WAF Custom Rule na Cloudflare bloqueia qualquer asset servido com `Referer` fora de `dellabeneta.io` — impede que outros sites consumam ROMs, imagens e demais arquivos |
+| Hotlink protection | WAF Custom Rule na Cloudflare bloqueia qualquer asset servido com `Referer` fora de `dellabeneta.com` — impede que outros sites consumam ROMs, imagens e demais arquivos |
 | Integridade do EmulatorJS | SRI (Subresource Integrity) com hash SHA-256 na tag de carregamento — o browser recusa executar o script se o arquivo do CDN externo for adulterado |
 | Security headers | Response Header Transform Rule na Cloudflare adiciona em todas as respostas: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` |
 
@@ -216,7 +216,7 @@ A solução é serverless e totalmente dentro da infraestrutura Cloudflare:
 |---|---|
 | **Cloudflare Worker** (`retrovault-visits`) | Função JavaScript que roda na borda da rede Cloudflare, sem servidor dedicado. Intercepta `GET /api/visits`, incrementa o contador e retorna JSON. |
 | **Workers KV** (`VISITORS`) | Banco chave-valor distribuído globalmente. Armazena uma única chave: `count`. Leitura e escrita em qualquer edge da Cloudflare sem latência de região. |
-| **Rota** | `emu.dellabeneta.io/api/visits` aponta exclusivamente para o Worker — o resto do tráfego segue para o S3 normalmente. |
+| **Rota** | `emu.dellabeneta.com/api/visits` aponta exclusivamente para o Worker — o resto do tráfego segue para o S3 normalmente. |
 
 Não há servidor, não há banco de dados relacional, não há dependência externa. O Worker é análogo a uma AWS Lambda com API Gateway — mas roda no edge, com cold start zero e integrado nativamente ao mesmo proxy que já serve o site.
 
@@ -224,6 +224,6 @@ Não há servidor, não há banco de dados relacional, não há dependência ext
 
 O rodapé do site tem um botão **Feedback** que abre um modal para qualquer visitante deixar uma opinião, sugestão ou reportar um bug. O formulário pede nome completo e um comentário em texto livre (máximo 300 caracteres).
 
-Os envios chegam por email via [Formspree](https://formspree.io) — sem backend, sem banco de dados. O endpoint do Formspree fica exposto no JS do cliente por design (é inevitável em front-end puro), mas o formulário tem proteção anti-spam nativa do Formspree e está restrito ao domínio `emu.dellabeneta.io`.
+Os envios chegam por email via [Formspree](https://formspree.io) — sem backend, sem banco de dados. O endpoint do Formspree fica exposto no JS do cliente por design (é inevitável em front-end puro), mas o formulário tem proteção anti-spam nativa do Formspree e está restrito ao domínio `emu.dellabeneta.com`.
 
 *[RetroVault] — feito por [@dellabeneta](https://github.com/dellabeneta)*
