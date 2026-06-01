@@ -800,6 +800,15 @@ kbd {
   border-color: var(--green3);
 }
 
+.footer-icon {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.footer-icon--bright {
+  opacity: 0.85;
+}
+
 /* === FEEDBACK MODAL === */
 #feedback-backdrop {
   display: none;
