@@ -37,7 +37,6 @@ const translations = {
     feedbackSubmit: "ENVIAR",
     feedbackSuccess: "Obrigado! Seu comentário foi recebido.",
     feedbackError: "Erro ao enviar. Tente novamente.",
-    booting: "CARREGANDO SISTEMA...",
     items: "ITENS"
   },
   en: {
@@ -77,7 +76,6 @@ const translations = {
     feedbackSubmit: "SEND",
     feedbackSuccess: "Thanks! Your feedback was received.",
     feedbackError: "Failed to send. Please try again.",
-    booting: "BOOTING SYSTEM...",
     items: "ITEMS"
   }
 };
@@ -590,45 +588,17 @@ function launchGame() {
   const selectedGame = platform.games[state.selectedGameIdx];
   if (!selectedGame) return;
 
-  const overlay    = document.getElementById('emulator-overlay');
-  const bootScreen = document.getElementById('boot-screen');
-
-  overlay.style.display    = 'flex';
-  bootScreen.style.opacity = '1';
-  bootScreen.style.display = 'flex';
-
-  const bootCanvas = document.getElementById('boot-canvas');
-  let noiseRaf;
-  if (bootCanvas) {
-    const ctx = bootCanvas.getContext('2d');
-    bootCanvas.width  = bootCanvas.offsetWidth;
-    bootCanvas.height = bootCanvas.offsetHeight;
-    function drawNoise() {
-      const w = bootCanvas.width, h = bootCanvas.height;
-      const imageData = ctx.createImageData(w, h);
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        const v = Math.random() * 255 | 0;
-        data[i] = v; data[i+1] = v; data[i+2] = v; data[i+3] = 255;
-      }
-      ctx.putImageData(imageData, 0, 0);
-      noiseRaf = requestAnimationFrame(drawNoise);
-    }
-    drawNoise();
-  }
-  const bootLogo = document.querySelector('.boot-logo');
-  if (bootLogo) {
-    bootLogo.className = 'boot-logo hidden';
-    setTimeout(() => { bootLogo.className = 'boot-logo tuning'; }, 800);
-    setTimeout(() => { bootLogo.className = 'boot-logo stable'; }, 2100);
-  }
-
-  const currentCore  = CORE_MAP[platform.abbr] || 'snes';
-  const ext          = EXT_MAP[platform.abbr]  || 'zip';
-  const filename     = selectedGame.file || selectedGame.title.replace(/\s+/g, '_').toLowerCase();
+  const overlay      = document.getElementById('emulator-overlay');
   const emuContainer = document.getElementById('emulator-container');
+
+  overlay.style.display      = 'flex';
   emuContainer.innerHTML     = '';
-  emuContainer.style.opacity = '0';
+  emuContainer.style.opacity = '1';
+  emuContainer.classList.add('visible');
+
+  const currentCore = CORE_MAP[platform.abbr] || 'snes';
+  const ext         = EXT_MAP[platform.abbr]  || 'zip';
+  const filename    = selectedGame.file || selectedGame.title.replace(/\s+/g, '_').toLowerCase();
 
   window.EJS_biosUrl = undefined;
   if (platform.abbr === 'PSX')    window.EJS_biosUrl = 'roms/psx/scph5501.bin';
@@ -647,21 +617,11 @@ function launchGame() {
   window.EJS_Buttons            = {};
   window.EJS_Settings           = {};
 
-  const injectLoader = () => {
-    const s = document.createElement('script');
-    s.src         = 'https://cdn.emulatorjs.org/stable/data/loader.js';
-    s.integrity   = 'sha256-aeCQO/Hi9izteIleflEfom4RMW9+tzSSXDXpGboSh7I=';
-    s.crossOrigin = 'anonymous';
-    document.body.appendChild(s);
-  };
-
-  setTimeout(injectLoader, 2000);
-  setTimeout(() => {
-    if (noiseRaf) cancelAnimationFrame(noiseRaf);
-    bootScreen.style.opacity = '0';
-    emuContainer.classList.add('visible');
-    setTimeout(() => { bootScreen.style.display = 'none'; }, 800);
-  }, 3000);
+  const s = document.createElement('script');
+  s.src         = 'https://cdn.emulatorjs.org/stable/data/loader.js';
+  s.integrity   = 'sha256-aeCQO/Hi9izteIleflEfom4RMW9+tzSSXDXpGboSh7I=';
+  s.crossOrigin = 'anonymous';
+  document.body.appendChild(s);
 }
 
 function closeEmulator() {
