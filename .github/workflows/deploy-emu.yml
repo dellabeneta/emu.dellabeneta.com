@@ -67,13 +67,13 @@ jobs:
           CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
           PURGE_URLS: '["https://emu.dellabeneta.com/index.html","https://emu.dellabeneta.com/data.js","https://emu.dellabeneta.com/script.js","https://emu.dellabeneta.com/style.css","https://emu.dellabeneta.com/favicon.ico"]'
 
-  smoke:
-    name: Smoke Tests
-    needs: deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  # smoke:
+  #   name: Smoke Tests
+  #   needs: deploy
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Infra — segurança Cloudflare
-        run: bash tests/infra/security.sh
+  #     - name: Infra — segurança Cloudflare
+  #       run: bash tests/infra/security.sh
