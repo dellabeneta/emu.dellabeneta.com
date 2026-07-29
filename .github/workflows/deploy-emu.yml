@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0   # gitleaks precisa do histórico completo
 
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -68,12 +68,21 @@ jobs:
           aws s3 cp style.css   s3://emu.dellabeneta.com/style.css
           aws s3 cp favicon.ico s3://emu.dellabeneta.com/favicon.ico
 
+      # Purge via API direta em vez de action de terceiro: o token não sai
+      # do runner e a última linha reprova o job se a Cloudflare recusar —
+      # antes, um token inválido falhava em silêncio.
       - name: Purge Cloudflare Cache
-        uses: jakejarvis/cloudflare-purge-action@v0.3.0
         env:
-          CLOUDFLARE_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-          CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
-          PURGE_URLS: '["https://emu.dellabeneta.com/index.html","https://emu.dellabeneta.com/data.js","https://emu.dellabeneta.com/script.js","https://emu.dellabeneta.com/style.css","https://emu.dellabeneta.com/favicon.ico"]'
+          CF_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
+        run: |
+          RESP=$(curl -sS -X POST \
+            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE}/purge_cache" \
+            -H "Authorization: Bearer ${CF_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"files":["https://emu.dellabeneta.com/index.html","https://emu.dellabeneta.com/data.js","https://emu.dellabeneta.com/script.js","https://emu.dellabeneta.com/style.css","https://emu.dellabeneta.com/favicon.ico"]}')
+          echo "$RESP"
+          echo "$RESP" | grep -q '"success":true'
 
   smoke:
     name: Smoke Tests
@@ -81,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # O site é restrito ao Brasil e o runner é estrangeiro. SMOKE_KEY é o
       # header de exceção na regra de WAF; sem ele tudo volta 403 e os
