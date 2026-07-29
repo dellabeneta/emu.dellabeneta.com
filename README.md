@@ -61,12 +61,13 @@
 
 ```
 Frontend            → HTML + CSS + JavaScript (sem frameworks, sem build)
-Emulação            → EmulatorJS via CDN (cdn.emulatorjs.org)
+Emulação            → EmulatorJS via CDN (cdn.emulatorjs.org) + SRI
 Hospedagem          → AWS S3 (static website hosting)
 CDN / HTTPS         → Cloudflare (proxy + cache + certificado)
+Cache               → Cache Rules na Cloudflare (ROMs com TTL de 1 mês)
 Contador de visitas → Cloudflare Worker + Workers KV
-CI/CD               → GitHub Actions (test → deploy → smoke)
-Segurança           → Bucket policy + WAF + SRI + Security Headers
+CI/CD               → GitHub Actions (test → deploy → smoke) + gitleaks
+Segurança           → Bucket policy + WAF (geo + hotlink) + SRI + Security Headers
 ```
 
 ### Arquitetura
@@ -79,7 +80,7 @@ O diagrama abaixo mostra o fluxo completo de uma requisição — do usuário at
               ▼
   ┌───────────────────────────────────────────────────┐
   │                   Cloudflare                      │
-  │        cache · HTTPS · WAF · security headers     │
+  │    cache · HTTPS · WAF (geo+hotlink) · headers    │
   └────────────────────┬──────────────────────────────┘
                        │
            ┌───────────┴────────────┐
@@ -118,21 +119,25 @@ O workflow `.github/workflows/deploy-emu.yml` executa 3 jobs em sequência:
 
 | Job | O que faz | Condição |
 |---|---|---|
-| `test` | Roda todos os testes | Sempre ao push em `main` |
-| `deploy` | Envia os 4 arquivos ao S3 + purge seletivo Cloudflare | Só se `test` passar |
-| `smoke` | Valida a infra ao vivo | Só após `deploy` |
+| `test` | Varredura de segredos (`gitleaks`) + testes unitários + validação do catálogo contra o S3 | Sempre ao push em `main` |
+| `deploy` | Envia os 5 arquivos ao S3 + purge seletivo na Cloudflare | Só se `test` passar |
+| `smoke` | Valida a borda ao vivo, contra produção | Só após `deploy` |
 
-O purge de cache é **seletivo** — invalida apenas `index.html`, `script.js`, `style.css` e `favicon.ico`, preservando o cache de ROMs e assets na Cloudflare.
+O purge de cache é **seletivo** — invalida apenas `index.html`, `data.js`, `script.js`, `style.css` e `favicon.ico`, preservando o cache de ROMs e assets na Cloudflare.
+
+O purge é feito por chamada direta à API da Cloudflare, não por action de terceiro, e o job **reprova** se a resposta não trouxer `"success": true`. Purge que falha em silêncio é pior que purge nenhum: o deploy fica verde servindo conteúdo velho.
 
 As credenciais AWS e Cloudflare são gerenciadas via GitHub Secrets, sem nenhuma informação sensível no código.
+
+**Detalhe do smoke test:** o site é restrito ao Brasil, e runners do GitHub são estrangeiros. As requisições do CI atravessam o bloqueio por um header secreto (`SMOKE_KEY`). A localização do runner, em vez de obstáculo, virou parte do teste — uma requisição **sem** o header tem que receber `403`, o que valida o bloqueio geográfico de fora do país a cada deploy.
 
 ### Testes
 
 ```
 tests/
 ├── infra/
-│   ├── security.sh     # segurança Cloudflare (headers, hotlink protection)
-│   └── catalog.js      # todas as ROMs referenciadas existem no disco
+│   ├── security.sh     # borda: geo, hotlink, cache, headers, HTTPS, favicon
+│   └── catalog.js      # toda ROM do catálogo existe no S3 (disco como fallback)
 └── unit/
     ├── i18n.js         # traduções PT/EN sincronizadas
     └── platforms.js    # estrutura obrigatória do PLATFORMS[]
@@ -147,17 +152,22 @@ node tests/unit/i18n.js
 node tests/unit/platforms.js
 ```
 
+O `security.sh` detecta o país de saída da execução e adapta as asserções: rodando do Brasil ele pula o teste de bloqueio geográfico, porque dali o teste não seria conclusivo. Testes que não podem concluir são **pulados com o motivo impresso**, nunca dados como aprovados.
+
 ### Estrutura do projeto
 
 ```
 emu.dellabeneta.com/
 ├── index.html              # estrutura da interface
 ├── style.css               # tema CRT cyberpunk (verde #00ff88 + âmbar #ffaa00)
-├── script.js               # catálogo PLATFORMS[], lógica, integração EmulatorJS
+├── data.js                 # catálogo PLATFORMS[] e textos das plataformas
+├── script.js               # lógica, i18n, integração EmulatorJS
 ├── favicon.ico
 ├── sync-s3.sh              # utilitário: sincroniza roms/ e assets/ com o S3
 ├── assets/                 # imagens das plataformas (S3, fora do git)
 ├── roms/                   # arquivos de jogo (S3, fora do git)
+├── docs/
+│   └── backlog.md          # plano de ação e decisões em aberto
 ├── tests/
 │   ├── infra/
 │   │   ├── security.sh
@@ -197,14 +207,75 @@ bash sync-s3.sh
 
 Requer AWS CLI configurado localmente com as credenciais corretas.
 
+### Cache e custo
+
+As ROMs são o volume de dados do projeto. Quando cada partida vira um download
+novo na origem, o egress do S3 aparece na fatura rápido.
+
+O diagnóstico: o plano Free da Cloudflare só cacheia extensões conhecidas por
+padrão. `.zip` e `.bin` entravam nessa lista; `.nes`, `.sfc`, `.gba` e companhia
+**não** — retornavam `cf-cache-status: DYNAMIC` e sem nenhum `Cache-Control`.
+Ou seja: toda partida ia até o S3, e nada ficava no navegador do jogador.
+
+A correção foi uma Cache Rule em `/roms/*`:
+
+| Configuração | Valor |
+|---|---|
+| Cache eligibility | `Eligible for cache` |
+| Edge TTL | 1 mês (override origin) |
+| Browser TTL | 1 mês (override origin) |
+
+ROM é conteúdo imutável, então TTL longo é seguro. O `Browser TTL` resolve o
+`Cache-Control` que a origem não enviava — reabrir o mesmo jogo passou a não
+gerar requisição alguma.
+
+Medido nos headers depois da mudança: `.nes` saiu de `DYNAMIC` para `HIT`, com
+`Cache-Control: max-age=2678400`.
+
+No mesmo passo, o `favicon.ico` caiu de **1,4 MB para 14,7 KB** — era maior que
+qualquer ROM de NES do catálogo e carregava em toda visita. O smoke test tem
+guarda para os dois casos, para que nenhum regrida em silêncio.
+
 ### Segurança
 
 | Camada | Implementação |
 |---|---|
-| Acesso ao S3 | Bucket policy restrito aos IPs da Cloudflare — requisições diretas ao endpoint S3 retornam **403 Forbidden** |
-| Hotlink protection | WAF Custom Rule na Cloudflare bloqueia qualquer asset servido com `Referer` fora de `dellabeneta.com` — impede que outros sites consumam ROMs, imagens e demais arquivos |
-| Integridade do EmulatorJS | SRI (Subresource Integrity) com hash SHA-256 na tag de carregamento — o browser recusa executar o script se o arquivo do CDN externo for adulterado |
-| Security headers | Response Header Transform Rule na Cloudflare adiciona em todas as respostas: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` |
+| Acesso ao S3 | Bucket policy restrita aos IPs da Cloudflare — requisições diretas ao endpoint S3 retornam **403 Forbidden**. Todo o tráfego é obrigado a passar pela borda. |
+| Bloqueio geográfico | WAF Custom Rule libera apenas o Brasil. Duas exceções deliberadas: bots verificados (`cf.client.bot`, para preservar indexação no Google e preview de link em WhatsApp/Discord) e um header secreto usado pelo CI. |
+| Hotlink protection | WAF Custom Rule bloqueia `/roms/*` quando o `Referer` existe e não é do próprio domínio nem da CDN do EmulatorJS. Impede que outro site embuta o catálogo consumindo a banda daqui. |
+| Integridade do EmulatorJS | SRI (Subresource Integrity) com hash SHA-256 na tag de carregamento — o browser recusa executar o script se o arquivo do CDN externo for adulterado. |
+| Security headers | `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security`, `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Resource-Policy: same-origin` e `Permissions-Policy` negando geolocalização, microfone, câmera e pagamento. |
+| Segredos no repositório | `gitleaks` roda no CI antes do deploy, sobre o histórico do git. Segredo commitado reprova o pipeline e o release não sai. |
+
+**Limites conhecidos.** Documentados de propósito, porque controle sem limite
+declarado é marketing:
+
+- Bloqueio geográfico depende de geolocalização por IP e hotlink protection
+  depende do header `Referer`. VPN contorna o primeiro; `Referrer-Policy:
+  no-referrer` contorna o segundo. São redução de superfície e de custo, não
+  barreira contra atacante determinado.
+- Regra de WAF nova **não** afeta objeto que já está no cache da borda. Foi
+  preciso um purge para o hotlink protection valer nas ROMs já cacheadas.
+- O endpoint do Formspree fica exposto no JS do cliente. É inevitável em
+  front-end puro; a mitigação é a proteção anti-spam do próprio Formspree e a
+  restrição de domínio.
+
+### Modelo de ameaça
+
+Vale explicitar o que este projeto **não** precisa proteger, porque é isso que
+define o desenho:
+
+- **Não há autenticação.** Não existe conta, login ou sessão. Sem credencial de
+  usuário, não há credencial de usuário para vazar.
+- **Não há base de usuários.** O único estado persistido é o contador de visitas
+  no Workers KV: um inteiro, sem qualquer vínculo com pessoa.
+- **O único dado pessoal é o formulário de feedback**, que pede nome e
+  comentário. Ele não é armazenado na infraestrutura do projeto — vai direto ao
+  Formspree, que é o responsável pelo tratamento.
+
+O que sobra a proteger, então, é **a infraestrutura e o custo**: impedir acesso
+direto ao bucket, impedir que terceiros sirvam o conteúdo às nossas custas, e
+garantir que o que o browser executa é exatamente o que foi publicado.
 
 ### Contador de visitas
 
