@@ -99,4 +99,5 @@ jobs:
         env:
           SMOKE_KEY: ${{ secrets.SMOKE_KEY }}
           S3_ORIGIN_URL: ${{ secrets.S3_ORIGIN_URL }}
+          EXPECT_HOTLINK: '1'
         run: bash tests/infra/security.sh
