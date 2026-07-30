@@ -93,11 +93,12 @@ O diagrama abaixo mostra o fluxo completo de uma requisição — do usuário at
   │  retrovault-visits  │   │   bucket restrito    │
   │                     │   │                      │
   │  incrementa count   │   │  index.html          │
-  │  retorna JSON       │   │  script.js           │
-  │  { count: N }       │   │  style.css           │
-  └──────────┬──────────┘   │  assets/ · roms/     │
-             │              └──────────────────────┘
-             ▼
+  │  retorna JSON       │   │  data.js             │
+  │  { count: N }       │   │  script.js           │
+  └──────────┬──────────┘   │  style.css           │
+             │              │  favicon.ico         │
+             │              │  assets/ · roms/     │
+             ▼              └──────────────────────┘
   ┌─────────────────────┐
   │    Workers KV       │
   │    VISITORS         │
